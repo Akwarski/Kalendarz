@@ -2,7 +2,9 @@ package com.example.jacek.kalendarz;
 
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
+import android.content.ComponentName;
 import android.content.Context;
+import android.widget.CalendarView;
 import android.widget.RemoteViews;
 
 /**
@@ -21,6 +23,8 @@ public class calendar_widget extends AppWidgetProvider {
 
         // Instruct the widget manager to update the widget
         appWidgetManager.updateAppWidget(appWidgetId, views);
+
+        //calendar_widget.updateAppWidget(context,appWidgetManager,appWidgetId);
     }
 
     @Override
@@ -29,6 +33,15 @@ public class calendar_widget extends AppWidgetProvider {
         for (int appWidgetId : appWidgetIds) {
             updateAppWidget(context, appWidgetManager, appWidgetId);
         }
+
+        /*RemoteViews remoteViews;
+        ComponentName calendarWidget;
+        JewishCalendar jc = new JewishCalendar();
+
+        remoteViews = new RemoteViews(context.getPackageName(), R.layout.main);
+        calendarWidget = new ComponentName(context, CalendarWidget.class);
+        remoteViews.setTextViewText(R.id.widget_text, jc.toString());
+        appWidgetManager.updateAppWidget(calendarWidget, remoteViews);*/
     }
 
     @Override

@@ -3,11 +3,10 @@
     android:layout_height="match_parent"
     android:padding="@dimen/widget_margin">
 
-    <CalendarView
+    <!--<LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-
-    </CalendarView>
+    </LinearLayout>-->
 
 </RelativeLayout>

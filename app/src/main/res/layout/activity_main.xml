@@ -4,14 +4,95 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".MainActivity">
+    tools:context=".MainActivity"
+    android:background="@color/colorPrimary">
 
-    <CalendarView
+    <ScrollView
         android:layout_width="match_parent"
+        android:fillViewport="true"
         android:layout_height="match_parent">
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center|top"
+            android:orientation="vertical">
+
+            <CalendarView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/shape"
+                android:gravity="center"
+                android:layout_marginTop="5dp"
+                android:id="@+id/my_calendar">
+
+            </CalendarView>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:background="@drawable/shape"
+                android:layout_marginTop="5dp"
+                android:layout_marginEnd="5dp"
+                android:layout_marginStart="5dp"
+                android:layout_marginBottom="5dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="@string/text1"
+                    android:textColor="#fb1d1d1d"
+                    android:textStyle="bold"
+                    android:textSize="20sp"/>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:weightSum="1">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:orientation="vertical"
+                        android:layout_weight="1"
+                        android:id="@+id/MyListView">
+
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:weightSum="1">
+
+                        <EditText
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:inputType="text"
+                            android:layout_weight="1"
+                            android:hint="@string/hintText1"
+                            android:id="@+id/addText" />
+
+                        <android.support.design.widget.FloatingActionButton
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:clickable="true"
+                            android:focusable="true"
+                            app:srcCompat="@android:drawable/ic_menu_add"
+                            android:id="@+id/add_box"/>
+
+                    </LinearLayout>
 
 
-    </CalendarView>
+                </LinearLayout>
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </ScrollView>
 
 </android.support.constraint.ConstraintLayout>

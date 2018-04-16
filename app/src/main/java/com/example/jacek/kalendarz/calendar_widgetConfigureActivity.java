@@ -76,7 +76,7 @@ public class calendar_widgetConfigureActivity extends Activity {
         setResult(RESULT_CANCELED);
 
         setContentView(R.layout.calendar_widget_configure);
-        mAppWidgetText = (EditText) findViewById(R.id.appwidget_text);
+        mAppWidgetText = findViewById(R.id.appwidget_text);
         findViewById(R.id.add_button).setOnClickListener(mOnClickListener);
 
         // Find the widget id from the intent.
