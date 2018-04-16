@@ -1,11 +1,13 @@
 package com.example.jacek.kalendarz;
 
 import android.content.Intent;
+import android.provider.ContactsContract;
 import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.ArrayAdapter;
@@ -17,26 +19,39 @@ import android.widget.ListView;
 import android.widget.Toast;
 
 import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
 
     //*******************************************************************************************
-    //Krok1
+    //Krok1 anonimowe logowanie
     // [START declare_auth]
     private FirebaseAuth mAuth;
     // [END declare_auth]
     //*******************************************************************************************
 
+    //*******************************************************************************************
+    //Krok1 firestore
+    FirebaseFirestore fs;
+    //*******************************************************************************************
+
+    //*******************************************************************************************
+    //Krok firestore
+    //*******************************************************************************************
+
     CalendarView calendarView;
     Button add;
-
+    String data;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,10 +66,15 @@ public class MainActivity extends AppCompatActivity {
 
 
         //*******************************************************************************************
-        //Krok2
+        //Krok2 anonimowe logowanie
         // Aby można było bez logowania dodawać (logowanie anonimowe)
         mAuth = FirebaseAuth.getInstance();
-        // *******************************************************************************************
+        //*******************************************************************************************
+
+        //*******************************************************************************************
+        //Krok2 firestore
+        fs = FirebaseFirestore.getInstance();
+        //*******************************************************************************************
 
         calendarView = findViewById(R.id.my_calendar);
 
@@ -65,13 +85,13 @@ public class MainActivity extends AppCompatActivity {
         FloatingActionButton add = findViewById(R.id.add_box);
 
         ListView LV = new ListView(this);
-        ArrayList<String> list = new ArrayList<String>();
+        ArrayList<String> list = new ArrayList<>();
         ArrayAdapter<String> adapter;
 
         LL.addView(LV);
 
         //*******************************************************************************************
-        //Krok4
+        //Krok4 anonimowe logowanie
         // Wywołanie funkcji:
         signInAnonymously();
         // *******************************************************************************************
@@ -86,22 +106,41 @@ public class MainActivity extends AppCompatActivity {
                     Toast.makeText(MainActivity.this, "Add Something please", Toast.LENGTH_SHORT).show();
                 }
                 else{
+                    chooseDay();
+                //*******************************************************************************************
+                //Wysyłamy na serwej firebase to co wpisaliśmy i jako głowny "folder" dajemy datę.
+                //Datę przy której wpisujemy także dodajemy do folderu
 
+                    //*******************************************************************************************
+                    //Krok3 firestore
+                    //Dodawanie do firestore:
+                    Map<String,Object> newAdd = new HashMap<>();
+                    newAdd.put("challenge", checkTXT);
+                    newAdd.put("Data", data);
+                    fs.collection("Tasks").document(data)
+                            .set(newAdd)
+                            .addOnSuccessListener(new OnSuccessListener<Void>() {
+                                @Override
+                                public void onSuccess(Void aVoid) {
+                                    Toast.makeText(MainActivity.this, "Add new task", Toast.LENGTH_SHORT).show();
+                                }
+                            })
+                            .addOnFailureListener(new OnFailureListener() {
+                                @Override
+                                public void onFailure(@NonNull Exception e) {
+                                    Log.d("ERROR",e.getMessage());
+                                }
+                            });
+                    //*******************************************************************************************
+
+                //*******************************************************************************************
                 }
             }
         });
-
-        calendarView.setOnDateChangeListener(new CalendarView.OnDateChangeListener() {
-            @Override
-            public void onSelectedDayChange(@NonNull CalendarView view, int year, int month, int dayOfMonth) {
-
-            }
-        });
-
     }
 
     //*******************************************************************************************
-    //Krok 3
+    //Krok 3 anonimowe logowanie
     //Funkcja:
     private void signInAnonymously() {
         mAuth.signInAnonymously().addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
@@ -113,14 +152,23 @@ public class MainActivity extends AppCompatActivity {
                     //finish();
                 } else {
                     Toast.makeText(MainActivity.this, "U are not Anonymous", Toast.LENGTH_SHORT).show();
+                    finish();
                 }
             }
         });
     }
     //*******************************************************************************************
 
-
     //*******************************************************************************************
-
+    //Krok pośredni do firestore
+    //Pobieramy date z aktualnej pozycji z kalendarza:
+    private void chooseDay(){
+        calendarView.setOnDateChangeListener(new CalendarView.OnDateChangeListener() {
+            @Override
+            public void onSelectedDayChange(@NonNull CalendarView view, int year, int month, int dayOfMonth) {
+                data = dayOfMonth + "/" + month + "/" + year;
+            }
+        });
+    }
     //*******************************************************************************************
 }
