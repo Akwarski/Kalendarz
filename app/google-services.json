@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "532619936207",
+    "firebase_url": "https://kalendarz-6aa15.firebaseio.com",
+    "project_id": "kalendarz-6aa15",
+    "storage_bucket": "kalendarz-6aa15.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:532619936207:android:d10d6fe0495979a2",
+        "android_client_info": {
+          "package_name": "com.example.jacek.kalendarz"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "532619936207-vsa53lm5fao1c3c7g91qc3q68tf9b4gt.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.jacek.kalendarz",
+            "certificate_hash": "fac72b0c52ea45047ed69f9dc381f8c31b9a8af3"
+          }
+        },
+        {
+          "client_id": "532619936207-mv94p08llikdfs8u5mrifr677shjfifb.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAEo4ZYG6fK8ikzbeEIXTst2-bolmKIRD8"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "532619936207-mv94p08llikdfs8u5mrifr677shjfifb.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
