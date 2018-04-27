@@ -18,7 +18,17 @@
             android:gravity="center|top"
             android:orientation="vertical">
 
-            <CalendarView
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/shape"
+                android:layout_marginTop="5dp"
+                android:id="@+id/my_calendar">
+
+            </LinearLayout>
+
+            <!--<CalendarView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:background="@drawable/shape"
@@ -26,7 +36,7 @@
                 android:layout_marginTop="5dp"
                 android:id="@+id/my_calendar">
 
-            </CalendarView>
+            </CalendarView>-->
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -38,14 +48,30 @@
                 android:layout_marginStart="5dp"
                 android:layout_marginBottom="5dp">
 
-                <TextView
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:gravity="center"
-                    android:text="@string/text1"
-                    android:textColor="#fb1d1d1d"
-                    android:textStyle="bold"
-                    android:textSize="20sp"/>
+                    android:orientation="horizontal"
+                    android:gravity="center">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="@string/text1"
+                        android:textColor="#fb1d1d1d"
+                        android:textStyle="bold"
+                        android:textSize="20sp"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="#fb1d1d1d"
+                        android:textStyle="bold"
+                        android:textSize="20sp"
+                        android:id="@+id/currentData"/>
+
+                </LinearLayout>
 
                 <LinearLayout
                     android:layout_width="match_parent"

@@ -19,43 +19,47 @@ import com.google.android.gms.tasks.Task
 import com.google.firebase.auth.AuthResult
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.android.synthetic.main.activity_main.*
 
-import java.util.ArrayList
-import java.util.HashMap
 import kotlin.properties.Delegates
 import android.R.attr.data
 import android.widget.CalendarView
+import java.util.Calendar
 import android.support.annotation.NonNull
-
+import com.google.firebase.firestore.SetOptions
+import kotlinx.android.synthetic.main.activity_main.view.*
+import org.w3c.dom.Text
+import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.util.*
+import java.time.format.DateTimeFormatter
 
 
 class MainActivity : AppCompatActivity() {
 
 
     //*******************************************************************************************
-    //Krok1/4 anonimowe logowanie
+    //Krok1/3 anonimowe logowanie
     // [START declare_auth]
     private var mAuth: FirebaseAuth? = null
     // [END declare_auth]
     //*******************************************************************************************
+
 
     //*******************************************************************************************
     //Krok1/3 firestore
     internal lateinit var fs: FirebaseFirestore
     //*******************************************************************************************
 
-    //*******************************************************************************************
-    //Krok firestore
-    //*******************************************************************************************
-
-    internal lateinit var calendarView: CalendarView
+//Deklaracja zmiennych globalnych (nie powinno się)
+    lateinit var calView: CalendarView
+    lateinit var data: String
     internal var add: Button? = null
-//    var data: String by Delegates.notNull<String>()
-//    val dataPicker = DatePicker(this)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
 
         //*******************************************************************************************
         // Powoduję że po odpaleniu aplikacji kursor nie wędruję do editText
@@ -64,37 +68,53 @@ class MainActivity : AppCompatActivity() {
 
 
         //*******************************************************************************************
-        //Krok2/4 anonimowe logowanie
+        //Krok2/3 anonimowe logowanie
         // Aby można było bez logowania dodawać (logowanie anonimowe)
         mAuth = FirebaseAuth.getInstance()
         //*******************************************************************************************
+
 
         //*******************************************************************************************
         //Krok2/3 firestore
         fs = FirebaseFirestore.getInstance()
         //*******************************************************************************************
 
-        calendarView = findViewById(R.id.my_calendar)
-
-        val LL = findViewById<LinearLayout>(R.id.MyListView)
+//Deklaracja zmiennych
+        val cal = findViewById<LinearLayout>(R.id.my_calendar)
+        val lay = findViewById<LinearLayout>(R.id.MyListView)
         val txt = findViewById<EditText>(R.id.addText)
-
-
         val add = findViewById<FloatingActionButton>(R.id.add_box)
 
-        val LV = ListView(this)
-        val RV = RecyclerView(this)
+        calView = CalendarView(this)
+
+
+        //*******************************************************************************************
+        //Wywołanie funkcja do pobrania aktualnej daty tylko przy starcie apk oraz ustawienie jej w TextView
+        data = getActualDate()
+        currentData.setText(data)
+        //*******************************************************************************************
+
+
+        val rv = RecyclerView(this)
 
         val list = ArrayList<String>()
         val adapter: ArrayAdapter<String>
 
-        LL.addView(RV)
+        cal.addView(calView)
+        lay.addView(rv)
+
 
         //*******************************************************************************************
-        //Krok4/4 anonimowe logowanie
-        // Wywołanie funkcji:
+        //wywołanie funkcji z Kroku2.5 firestore
+        chooseDay()
+        // *******************************************************************************************
+
+
+        //*******************************************************************************************
+        //wywołanie funkcji z Kroku3 anonimowe logowanie
         signInAnonymously()
         // *******************************************************************************************
+
 
         add.setOnClickListener {
             val checkTXT = txt.text.toString().trim { it <= ' ' }
@@ -102,10 +122,12 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this@MainActivity, "Add Something please", Toast.LENGTH_SHORT).show()
             } else {
 
-                val data = chooseDay()
+
                 //*******************************************************************************************
-                //Wysyłamy na serwej firebase to co wpisaliśmy i jako głowny "folder" dajemy datę.
-                //Datę przy której wpisujemy także dodajemy do folderu
+                //Wyświetlanie dodanych alementów w RecyclerView (lista)
+
+                //*******************************************************************************************
+
 
                 //*******************************************************************************************
                 //Krok3/3 firestore
@@ -113,18 +135,37 @@ class MainActivity : AppCompatActivity() {
                 val newAdd = HashMap<String, Any>()
                 newAdd.put("challenge", checkTXT)
                 newAdd.put("Data", data)
-                fs.collection("Tasks").document(data).set(newAdd).addOnSuccessListener {
-                    Toast.makeText(this@MainActivity, "Add new task", Toast.LENGTH_SHORT).show()
+                fs.collection(data).add(newAdd).addOnSuccessListener {
+                    Toast.makeText(this@MainActivity, "Successful", Toast.LENGTH_SHORT).show()
                 }.addOnFailureListener { e -> Log.d("ERROR", e.message) }
                 //*******************************************************************************************
 
+
                 //*******************************************************************************************
+                //Jeśli brak internetu to synchronizuj później
+
+                //*******************************************************************************************
+
+
             }
         }
     }
 
+
     //*******************************************************************************************
-    //Krok3/4 anonimowe logowanie
+    //Funkcja do pobrania aktualnej daty tylko przy starcie apk
+    private fun getActualDate(): String {
+        val dateTemp = Calendar.getInstance().time
+        val dataForm = SimpleDateFormat("dd/M/yyyy", Locale.getDefault())
+        data = dataForm.format(dateTemp)
+
+        return data
+    }
+    //*******************************************************************************************
+
+
+    //*******************************************************************************************
+    //Krok3/3 anonimowe logowanie
     //Funkcja:
     private fun signInAnonymously() {
         mAuth!!.signInAnonymously().addOnCompleteListener(this) { task ->
@@ -140,17 +181,17 @@ class MainActivity : AppCompatActivity() {
     }
     //*******************************************************************************************
 
+
     //*******************************************************************************************
     //Krok(2.5)/3 pośredni do firestore
     //Pobieramy date z aktualnej pozycji z kalendarza:
-    private fun chooseDay():String {
-        var data ="temp"
-        calendarView.setOnDateChangeListener {
-            view, year, month, dayOfMonth -> val dat = "change"
-            Toast.makeText(this,"Tutaj także nie wchodzi",Toast.LENGTH_LONG).show()
-            //dayOfMonth.toString() + "/" + month + "/" + year
+    private fun chooseDay() {
+        calView.setOnDateChangeListener{
+            view, year, month, dayOfMonth -> data = (dayOfMonth.toString() + "/" + (month+1) + "/" + year).toString()
+            currentData.setText(data)
         }
-        return data
     }
     //*******************************************************************************************
+
+
 }
