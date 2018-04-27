@@ -170,18 +170,5 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
-    //*******************************************************************************************
-    
-    
-    private void chooseDay(){
-	calendarView = findViewById(R.id.my_calendar);
-        calendarView.setOnDateChangeListener(new CalendarView.OnDateChangeListener() {
-            @Override
-            public void onSelectedDayChange(@NonNull CalendarView view, int year, int month, int dayOfMonth) {
-                data = dayOfMonth + "/" + month + "/" + year;
-            }
-        });
-    }
-    
-    
+    //*******************************************************************************************    
 }
