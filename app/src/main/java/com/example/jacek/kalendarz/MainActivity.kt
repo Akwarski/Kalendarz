@@ -18,7 +18,6 @@ import com.google.android.gms.tasks.OnSuccessListener
 import com.google.android.gms.tasks.Task
 import com.google.firebase.auth.AuthResult
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.android.synthetic.main.activity_main.*
 
 import kotlin.properties.Delegates
@@ -26,7 +25,9 @@ import android.R.attr.data
 import android.widget.CalendarView
 import java.util.Calendar
 import android.support.annotation.NonNull
-import com.google.firebase.firestore.SetOptions
+import android.support.constraint.solver.widgets.Snapshot
+import com.google.firebase.firestore.*
+import com.google.firebase.firestore.EventListener
 import kotlinx.android.synthetic.main.activity_main.view.*
 import org.w3c.dom.Text
 import java.text.SimpleDateFormat
@@ -51,9 +52,10 @@ class MainActivity : AppCompatActivity() {
     internal lateinit var fs: FirebaseFirestore
     //*******************************************************************************************
 
-//Deklaracja zmiennych globalnych (nie powinno się)
+    //Deklaracja zmiennych globalnych (nie powinno się)
     lateinit var calView: CalendarView
     lateinit var data: String
+    lateinit var time: String
     internal var add: Button? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -79,41 +81,46 @@ class MainActivity : AppCompatActivity() {
         fs = FirebaseFirestore.getInstance()
         //*******************************************************************************************
 
-//Deklaracja zmiennych
-        val cal = findViewById<LinearLayout>(R.id.my_calendar)
-        val lay = findViewById<LinearLayout>(R.id.MyListView)
-        val txt = findViewById<EditText>(R.id.addText)
-        val add = findViewById<FloatingActionButton>(R.id.add_box)
 
-        calView = CalendarView(this)
+        //*******************************************************************************************
+        //wywołanie funkcji z Kroku3/3 anonimowe logowanie
+        signInAnonymously()
+        // *******************************************************************************************
+
+
+        //Deklaracja zmiennych
+        val cal = findViewById<LinearLayout>(R.id.my_calendar) //layout do wyświetlenia kalendarza
+        val lay = findViewById<LinearLayout>(R.id.MyListView) //layout do wyświetlenia listy z relative view
+        val txt = findViewById<EditText>(R.id.addText) //pole do wprowadzania wydarzenia
+        val add = findViewById<FloatingActionButton>(R.id.add_box) //przycisk do dodania wydarzenia
+        val rv = RecyclerView(this) // lista w której będą się wyświetlać wydarzenia z danego dnia
+        val list = ArrayList<String>()
+        val adapter: ArrayAdapter<String>
+
+        calView = CalendarView(this) //wyświetlany kalendarz
+        cal.addView(calView) // dodanie kalendarza do linearLayoutu aby było go widać
 
 
         //*******************************************************************************************
         //Wywołanie funkcja do pobrania aktualnej daty tylko przy starcie apk oraz ustawienie jej w TextView
-        data = getActualDate()
-        currentData.setText(data)
+        getActualDate()
         //*******************************************************************************************
 
 
-        val rv = RecyclerView(this)
-
-        val list = ArrayList<String>()
-        val adapter: ArrayAdapter<String>
-
-        cal.addView(calView)
-        lay.addView(rv)
-
-
         //*******************************************************************************************
-        //wywołanie funkcji z Kroku2.5 firestore
+        //wywołanie funkcji z Kroku2.5/3 firestore
         chooseDay()
         // *******************************************************************************************
 
 
         //*******************************************************************************************
-        //wywołanie funkcji z Kroku3 anonimowe logowanie
-        signInAnonymously()
-        // *******************************************************************************************
+        //Wyświetlanie dodanych elementów w RecyclerView (lista)
+        getFromFS()
+
+//                if(data = dataFirebase)
+        //rv.add
+        lay.addView(rv)
+        //*******************************************************************************************
 
 
         add.setOnClickListener {
@@ -122,22 +129,21 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this@MainActivity, "Add Something please", Toast.LENGTH_SHORT).show()
             } else {
 
+                //*******************************************************************************************
+                //Wywołanie funkcja do pobrania aktualnej godziny
+                getActualTime()
+                //*******************************************************************************************
+
 
                 //*******************************************************************************************
-                //Wyświetlanie dodanych alementów w RecyclerView (lista)
+                //wyświetlanie nowo dodanego elementu
 
                 //*******************************************************************************************
 
 
                 //*******************************************************************************************
-                //Krok3/3 firestore
-                //Dodawanie do firestore:
-                val newAdd = HashMap<String, Any>()
-                newAdd.put("challenge", checkTXT)
-                newAdd.put("Data", data)
-                fs.collection(data).add(newAdd).addOnSuccessListener {
-                    Toast.makeText(this@MainActivity, "Successful", Toast.LENGTH_SHORT).show()
-                }.addOnFailureListener { e -> Log.d("ERROR", e.message) }
+                //wywołanie funkcji z Kroku3/3 firestore dodawania do firestore
+                addToFirestore(checkTXT, time)
                 //*******************************************************************************************
 
 
@@ -150,18 +156,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
-
-
-    //*******************************************************************************************
-    //Funkcja do pobrania aktualnej daty tylko przy starcie apk
-    private fun getActualDate(): String {
-        val dateTemp = Calendar.getInstance().time
-        val dataForm = SimpleDateFormat("dd/M/yyyy", Locale.getDefault())
-        data = dataForm.format(dateTemp)
-
-        return data
-    }
-    //*******************************************************************************************
 
 
     //*******************************************************************************************
@@ -183,13 +177,74 @@ class MainActivity : AppCompatActivity() {
 
 
     //*******************************************************************************************
+    //Funkcja do pobrania aktualnej daty tylko przy starcie apk
+    private fun getActualDate() {
+        val dateTemp = Calendar.getInstance().time
+        var dataForm = SimpleDateFormat("dd.M.yyyy", Locale.getDefault())
+        data = dataForm.format(dateTemp)
+        currentData.setText(data)
+
+        dataForm = SimpleDateFormat("yyyy.M.dd", Locale.getDefault())
+        data = dataForm.format(dateTemp)
+    }
+    //*******************************************************************************************
+
+
+    //*******************************************************************************************
+    //Funkcja do pobrania aktualnej daty i godziny (do zapisu jako id dokumentu)
+    private fun getActualTime() {
+        val timeTemp = Calendar.getInstance().time
+        val timeForm = SimpleDateFormat("yyyy.M.dd HH:mm:ss", Locale.getDefault())
+        time = timeForm.format(timeTemp)
+    }
+    //*******************************************************************************************
+
+
+    //*******************************************************************************************
     //Krok(2.5)/3 pośredni do firestore
     //Pobieramy date z aktualnej pozycji z kalendarza:
     private fun chooseDay() {
         calView.setOnDateChangeListener{
-            view, year, month, dayOfMonth -> data = (dayOfMonth.toString() + "/" + (month+1) + "/" + year).toString()
+            view, year, month, dayOfMonth ->
+            data = dayOfMonth.toString() + "." + (month+1) + "." + year
             currentData.setText(data)
+            data = year.toString() + "." + (month+1) + "." + dayOfMonth
         }
+    }
+    //*******************************************************************************************
+
+
+    //*******************************************************************************************
+    //Krok3/3 firestore
+    //Funkcja dodawająca do firestore:
+    private fun addToFirestore(checkTXT: String, time:String) {
+        val newAdd = HashMap<String, Any>()
+        newAdd.put("challenge", checkTXT)
+        newAdd.put("Data", data)
+        fs.collection(data).document(time).set(newAdd).addOnSuccessListener {
+            Toast.makeText(this@MainActivity, "Successful", Toast.LENGTH_SHORT).show()
+        }.addOnFailureListener { e -> Log.d("ERROR", e.message) }
+    }
+    //*******************************************************************************************
+
+
+    //*******************************************************************************************
+    //Funkcja wyświetlająca dodane alementy z Firestore
+    private fun getFromFS() {
+        fs.collection(data).get().addOnCompleteListener(object : OnCompleteListener<QuerySnapshot> {
+            override fun onComplete(task: Task<QuerySnapshot>) {
+                if (task.isSuccessful) {
+                    for (document in task.result) {
+                        val temp = document.getString("challenge")
+                        Toast.makeText(this@MainActivity, temp, Toast.LENGTH_SHORT).show()
+                    }
+
+                } else {
+                    Toast.makeText(this@MainActivity, "get failed with", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+        })
     }
     //*******************************************************************************************
 
