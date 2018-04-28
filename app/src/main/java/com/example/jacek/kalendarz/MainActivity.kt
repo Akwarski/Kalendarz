@@ -22,6 +22,8 @@ import kotlinx.android.synthetic.main.activity_main.*
 
 import kotlin.properties.Delegates
 import android.R.attr.data
+import android.content.Context
+import android.net.ConnectivityManager
 import android.widget.CalendarView
 import java.util.Calendar
 import android.support.annotation.NonNull
@@ -216,14 +218,28 @@ class MainActivity : AppCompatActivity() {
 
     //*******************************************************************************************
     //Krok3/3 firestore
-    //Funkcja dodawająca do firestore:
+    //Funkcja dodawająca do firestore i sprawdzenie połączenia
     private fun addToFirestore(checkTXT: String, time:String) {
+
+
+        //*******************************************************************************************
+        //Sprawdzenie czy jest podłączenie do internetu
+        val cm = baseContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val networkInfo = cm.activeNetworkInfo
+        //*******************************************************************************************
+
+        if(networkInfo == null) // Gdy brak połączenia
+            Toast.makeText(this@MainActivity, "You dont have internet connection but dont be scarry, Your event dont be lose! We add your calendar event when We have internet connection and in the same time We add this to Your list", Toast.LENGTH_LONG).show()
+
+
         val newAdd = HashMap<String, Any>()
         newAdd.put("challenge", checkTXT)
         newAdd.put("Data", data)
         fs.collection(data).document(time).set(newAdd).addOnSuccessListener {
             Toast.makeText(this@MainActivity, "Successful", Toast.LENGTH_SHORT).show()
-        }.addOnFailureListener { e -> Log.d("ERROR", e.message) }
+        }.addOnFailureListener {
+            e -> Log.d("ERROR", e.message)
+        }
     }
     //*******************************************************************************************
 
