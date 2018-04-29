@@ -10,8 +10,6 @@ import android.widget.TextView
 
 class EventListAdapter(val listOfEvent: ArrayList<Element>) : RecyclerView.Adapter<EventListAdapter.ViewHolder>(){
 
-    private var context: Context? = null
-
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val v = LayoutInflater.from(parent.context).inflate(R.layout.recyclerview_list_layout, parent, false)
         return ViewHolder(v)
