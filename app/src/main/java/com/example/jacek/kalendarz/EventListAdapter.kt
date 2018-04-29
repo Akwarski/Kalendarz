@@ -10,7 +10,6 @@ import android.widget.TextView
 
 class EventListAdapter(val listOfEvent: ArrayList<Element>) : RecyclerView.Adapter<EventListAdapter.ViewHolder>(){
 
-    //private var listOfEvent: MutableList<Element> = mutableListOf()
     private var context: Context? = null
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
