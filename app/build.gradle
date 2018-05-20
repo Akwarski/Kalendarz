@@ -38,6 +38,9 @@ dependencies {
     implementation "com.google.android.gms:play-services-gcm:15.0.0"
     implementation "com.google.firebase:firebase-firestore:15.0.0"
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+
+    //do context menu
+    implementation "org.jetbrains.anko:anko-commons:0.10.2"
 }
 
 apply plugin: 'com.google.gms.google-services'
