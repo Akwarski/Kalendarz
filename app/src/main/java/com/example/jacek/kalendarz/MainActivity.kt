@@ -1,6 +1,7 @@
 package com.example.jacek.kalendarz
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.ContentValues
 import android.support.design.widget.FloatingActionButton
 import android.support.v7.app.AppCompatActivity
@@ -16,12 +17,18 @@ import com.google.firebase.auth.FirebaseAuth
 import kotlinx.android.synthetic.main.activity_main.*
 
 import android.content.Context
+import android.content.DialogInterface
 import android.content.Intent
 import android.net.ConnectivityManager
+import android.os.Handler
 import android.widget.CalendarView
 import java.util.Calendar
 import android.support.v7.widget.LinearLayoutManager
 import android.view.*
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
+import com.google.android.gms.tasks.OnFailureListener
+import com.google.android.gms.tasks.OnSuccessListener
 import com.google.firebase.firestore.*
 import com.google.firebase.firestore.EventListener
 import java.text.FieldPosition
@@ -55,6 +62,10 @@ class MainActivity : AppCompatActivity() {
     internal var add: Button? = null
     lateinit var adapter : EventListAdapter
     lateinit var txt: EditText
+    lateinit var sfDocRef : DocumentReference
+    lateinit var newTxt : String
+
+
 
     //Krok1 Tworzenie listy
     //lateinit var eventRecyclerView : RecyclerView
@@ -129,14 +140,19 @@ class MainActivity : AppCompatActivity() {
 
             override fun onItemLongClick(view: View, position: Int) {
                 selector(null, actions, { dialogInterface, i ->
-                    if(i==0) updateData(position, list, add)
-                    else deleteData(position, list)
+                    if(i==0) {
+                        updateData(position, list, add, rv)
+                    }
+
+                    else {
+                        deleteData(position, list, rv)
+                    }
                 })
             }
 
         }))
 
-        //Wyświetlanie dodanych elementów w RecyclerView (lista) 1/2
+        //Wyświetlanie dodanych elementów w RecyclerView (lista) 2/4
         getFromFS(list,rv)
         //*******************************************************************************************
 
@@ -159,9 +175,11 @@ class MainActivity : AppCompatActivity() {
                     Toast.makeText(this@MainActivity, "You dont have internet connection but dont be scarry, Your event dont be lose! We add your calendar event when We have internet connection and in the same time We add this to Your list", Toast.LENGTH_LONG).show()
 
                 addToFirestore(checkTXT, time)
+                txt.getText().clear() //czyszczenie pola editText po dodaniu
+                closeKeyboard() //ukrycie klawiatury qwerty
                 //*******************************************************************************************
 
-                //Wyświetlanie dodanych elementów w RecyclerView (lista)
+                //Wyświetlanie dodanych elementów w RecyclerView (lista) 3/4 (lista)
                 getFromFS(list,rv)
                 //*******************************************************************************************
 
@@ -214,7 +232,7 @@ class MainActivity : AppCompatActivity() {
             currentData.setText(data)
             data = year.toString() + "." + (month+1) + "." + dayOfMonth
 
-            //Wyświetlanie dodanych elementów w RecyclerView (lista) 2/2
+            //Wyświetlanie dodanych elementów w RecyclerView (lista) 4/4 (lista)
             getFromFS(list,rv)
             //*******************************************************************************************
 
@@ -381,46 +399,87 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-    private fun updateData(position: Int, list: ArrayList<Element>, add: FloatingActionButton) {
-        //err_msg.visibility = View.GONE
-        //progress.visibility = View.VISIBLE
+
+    //Edytowanie:
+    private fun updateData(position: Int, list: ArrayList<Element>, add: FloatingActionButton, rv: RecyclerView) {
 
         add.setImageResource(android.R.drawable.ic_menu_save) // ustawienie wyglądu do edytacji
-        txt.setText(list.get(position).challengeFromFS)
+        txt.setText(list.get(position).challengeFromFS) //wprowadza poprzedni tekst
 
-        val newTxt = txt.text.toString().trim { it <= ' ' }
         add.setOnClickListener {
-            val update = HashMap<String, Any>()
-            update.put("challenge", newTxt)
-            update.put("Stan", list.get(position).stanFromFS!!)
-            update.put("Data", list.get(position).dataFromFS)
-
-            fs.collection(list.get(position).dataFromFS).document(list.get(position).timeFromFS)
-                    .addSnapshotListener(object : EventListener<DocumentSnapshot> {
-                        override fun onEvent(snapshot: DocumentSnapshot?,
-                                             e: FirebaseFirestoreException?) {
-
-                            if (e != null) {
-                                Log.w(ContentValues.TAG, "Listen error", e)
-                                //err_msg.text = e.message
-                                //err_msg.visibility = View.VISIBLE;
-                                return
-                            }
-                            snapshot?.reference?.update(update)
-                            val intent = Intent()
-                            setResult(Activity.RESULT_OK, intent)
-                            Toast.makeText(this@MainActivity, "update", Toast.LENGTH_SHORT).show()
-                        }
+            newTxt = txt.getText().toString()
+            sfDocRef = fs.collection(list.get(position).dataFromFS).document(list.get(position).timeFromFS)
+            sfDocRef.update("challenge", newTxt)
+                    .addOnSuccessListener(OnSuccessListener {
+                        Toast.makeText(this,"done",Toast.LENGTH_SHORT).show()
                     })
+            fresh(list,rv) //Odświeżanie listy
+            closeKeyboard() //ukrycie klawiatury qwerty
+            txt.getText().clear() //czyszczenie pola editText po update
         }
     }
     //*******************************************************************************************
 
+
     //funkcja do usuwania
-    private fun deleteData(position: Int, list: ArrayList<Element>) {
-        Toast.makeText(this@MainActivity, list.get(position).challengeFromFS, Toast.LENGTH_SHORT).show()
+    private fun deleteData(position: Int, list: ArrayList<Element>, rv: RecyclerView) {
+        val buldier = AlertDialog.Builder(this) //potwierdzenie usunięcia eventu
+        buldier.setTitle("Are you sure")
+        buldier.setMessage("Do you want to delete this challenge?")
+        buldier.setPositiveButton("Yes", { dialogInterface: DialogInterface, i: Int ->
+            fs.collection(list.get(position).dataFromFS).document(list.get(position).timeFromFS)
+                    .delete()
+                    .addOnSuccessListener(OnSuccessListener {
+                        Toast.makeText(this, "Delete event", Toast.LENGTH_SHORT).show()
+                        fresh(list,rv) //Odświeżanie listy
+                    })
+                    .addOnFailureListener(OnFailureListener {
+                        Toast.makeText(this, "Error not delete event", Toast.LENGTH_SHORT).show() })
+        }) //wyrażenie lambda
+        buldier.setNegativeButton("No", { dialogInterface: DialogInterface, i: Int -> }) //wyrażenie lambda
+        buldier.show()
+
+        //Toast.makeText(this@MainActivity, list.get(position).challengeFromFS, Toast.LENGTH_SHORT).show()
     }
     //*******************************************************************************************
+
+
+    //Odświeżanie listy
+    fun fresh(list: ArrayList<Element>, rv: RecyclerView){
+        Handler().postDelayed({ //opóźnienie
+            Toast.makeText(this@MainActivity,"I fresh Your List",Toast.LENGTH_SHORT).show()
+            //Wyświetlanie dodanych elementów w RecyclerView (lista) 1/4
+            getFromFS(list,rv)
+            //*******************************************************************************************
+        }, 500)
+    }
+    //*******************************************************************************************
+
+
+    fun closeKeyboard(){
+        //txt.onEditorAction(EditorInfo.IME_ACTION_DONE)
+
+        val inputManager:InputMethodManager =getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        inputManager.hideSoftInputFromWindow(currentFocus.windowToken, InputMethodManager.SHOW_FORCED)
+
+    }
+    //*******************************************************************************************
+
+
+    //nadpisanie przycisku wróć w celu potwierdzenia zamknięcia app
+    override fun onBackPressed() {
+        val buldier = AlertDialog.Builder(this) //potwierdzenie usunięcia eventu
+        buldier.setTitle("Are you sure")
+        buldier.setMessage("Do you want to close the app?")
+        buldier.setPositiveButton("Yes", { dialogInterface: DialogInterface, i: Int ->
+            finish()
+        }) //wyrażenie lambda
+        buldier.setNegativeButton("No", { dialogInterface: DialogInterface, i: Int -> }) //wyrażenie lambda
+        buldier.show()
+
+        //Toast.makeText(this@MainActivity, list.get(position).challengeFromFS, Toast.LENGTH_SHORT).show()
+    }
+    //********************************************************************************************
 
 }
 
