@@ -8,5 +8,6 @@ data class Element constructor(
         var dataFromFS: String,
         var stanFromFS: Boolean?,
         var challengeFromFS: String,
-        var timeFromFS: String
+        var timeFromFS: String,
+        var lastUpdate: String
 ):Serializable

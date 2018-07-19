@@ -2,6 +2,7 @@ package com.example.jacek.kalendarz
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.app.DatePickerDialog
 import android.content.ContentValues
 import android.support.design.widget.FloatingActionButton
 import android.support.v7.app.AppCompatActivity
@@ -20,7 +21,9 @@ import android.content.Context
 import android.content.DialogInterface
 import android.content.Intent
 import android.net.ConnectivityManager
+import android.os.AsyncTask
 import android.os.Handler
+import android.os.SystemClock.sleep
 import android.widget.CalendarView
 import java.util.Calendar
 import android.support.v7.widget.LinearLayoutManager
@@ -40,6 +43,11 @@ import org.jetbrains.anko.*
 
 class MainActivity : AppCompatActivity() {
 
+    //ProgressBar nie działa 0/7
+    /*internal var pStatus = 0
+    private val handler = Handler()*/
+
+
     //Krok1/3 anonimowe logowanie
     // [START declare_auth]
     private var mAuth: FirebaseAuth? = null
@@ -55,6 +63,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var data: String
     private lateinit var time: String
     private lateinit var myTimeFromFS: String
+    private lateinit var myUpdate: String
     private val stan = false
     private var myStanFromFS:Boolean? = false
     private lateinit var myChallengeFromFS:String
@@ -64,8 +73,6 @@ class MainActivity : AppCompatActivity() {
     lateinit var txt: EditText
     lateinit var sfDocRef : DocumentReference
     lateinit var newTxt : String
-
-
 
     //Krok1 Tworzenie listy
     //lateinit var eventRecyclerView : RecyclerView
@@ -99,7 +106,7 @@ class MainActivity : AppCompatActivity() {
         val add = findViewById<FloatingActionButton>(R.id.add_box) //przycisk do dodania wydarzenia
         add.setImageResource(android.R.drawable.ic_input_add) //ustawienie wyglądu float action button
         val rv = RecyclerView(this) // lista w której będą się wyświetlać wydarzenia z danego dnia
-        val actions = listOf("Update", "Delete") //deklaracja wyskakującego menu
+        val actions = listOf("Edit", "Change date", "Delete") //deklaracja wyskakującego menu
         rv.layoutManager = LinearLayoutManager(this, LinearLayout.VERTICAL, false)
 
         val list = ArrayList<Element>()
@@ -144,6 +151,10 @@ class MainActivity : AppCompatActivity() {
                         updateData(position, list, add, rv)
                     }
 
+                    else if(i==1){
+                        changeDate(position, list, rv)
+                    }
+
                     else {
                         deleteData(position, list, rv)
                     }
@@ -152,9 +163,47 @@ class MainActivity : AppCompatActivity() {
 
         }))
 
+
+        /* ProgressBar nie działa 1/7
+
+        val mProgress = findViewById<View>(R.id.progressBar) as ProgressBar
+        mProgress.progress = 0   // Main Progress
+        mProgress.secondaryProgress = 100 // Secondary Progress
+        mProgress.max = 100 // Maximum Progress
+
+        //tv = findViewById<View>(R.id.tv) as TextView
+        Thread(Runnable {
+            // TODO Auto-generated method stub
+            while (pStatus < 100) {
+                pStatus += 1
+
+                handler.post {
+                    // TODO Auto-generated method stub
+                    mProgress.progress = pStatus
+
+                    progressBar.progress = pStatus
+                    //tv.text = pStatus.toString() + "%"
+                }
+                try {
+                    // Sleep for 200 milliseconds.
+                    // Just to display the progress slowly
+                    Thread.sleep(16) //thread will take approx 3 seconds to finish
+                } catch (e: InterruptedException) {
+                    e.printStackTrace()
+                }
+
+            }
+        }).start()*/
+
+        // ProgressBar nie działa 2/7
+        // Mytask(list, rv, progressBar).execute()
+
+
+
         //Wyświetlanie dodanych elementów w RecyclerView (lista) 2/4
         getFromFS(list,rv)
         //*******************************************************************************************
+
 
         add.setImageResource(android.R.drawable.ic_input_add) //przywrócenie wyglądu float action button
 
@@ -178,6 +227,10 @@ class MainActivity : AppCompatActivity() {
                 txt.getText().clear() //czyszczenie pola editText po dodaniu
                 closeKeyboard() //ukrycie klawiatury qwerty
                 //*******************************************************************************************
+
+
+                //ProgressBar nie działa 3/7
+                //Mytask(list, rv, progressBar).execute()
 
                 //Wyświetlanie dodanych elementów w RecyclerView (lista) 3/4 (lista)
                 getFromFS(list,rv)
@@ -232,10 +285,13 @@ class MainActivity : AppCompatActivity() {
             currentData.setText(data)
             data = year.toString() + "." + (month+1) + "." + dayOfMonth
 
+
+            // ProgressBar nie działa 4/7
+            //Mytask(list, rv, progressBar).execute()
+
             //Wyświetlanie dodanych elementów w RecyclerView (lista) 4/4 (lista)
             getFromFS(list,rv)
             //*******************************************************************************************
-
         }
     }
     //*******************************************************************************************
@@ -247,6 +303,7 @@ class MainActivity : AppCompatActivity() {
         newAdd.put("challenge", checkTXT)
         newAdd.put("Stan", stan)
         newAdd.put("Data", data)
+        newAdd.put("Update",time)
         fs.collection(data).document(time).set(newAdd).addOnSuccessListener {
             val intent = Intent()
             setResult(Activity.RESULT_OK, intent)
@@ -275,10 +332,13 @@ class MainActivity : AppCompatActivity() {
 
                     }
 
+                    //przypisanie do wysłania do obiektu element
                     for (document in task.result) {
                         myStanFromFS = document.getBoolean("Stan")
                         myChallengeFromFS = document.getString("challenge").toString()
+                        myUpdate = document.getString("Update").toString()
                         myTimeFromFS = document.id //pobieram id dokumentu (w moim przypadku data i godzina)
+
 
                         //wywołanie funkcji do wyświetlania w recyclerView
                         displayInList(list, rv)
@@ -286,21 +346,48 @@ class MainActivity : AppCompatActivity() {
 
                     }
 
-                } else {
+                }
+                else {
                     Toast.makeText(this@MainActivity, "get failed with", Toast.LENGTH_SHORT).show()
                 }
             }
 
         })
+
+
     }
     //*******************************************************************************************
 
+
+    // ProgressBar nie działa 5/7
+    /*var x = 0
+    lateinit var tempList : ArrayList<Element>
+    lateinit var tempRv : RecyclerView
+    //val ma = MainActivity()*/
     //funkcja wyświetlania w recyclerView
-    private fun displayInList(list: ArrayList<Element>, rv: RecyclerView) {
-        element = Element(data, myStanFromFS, myChallengeFromFS, myTimeFromFS)
+    fun displayInList(list: ArrayList<Element>, rv: RecyclerView) {
+        element = Element(data, myStanFromFS, myChallengeFromFS, myTimeFromFS, myUpdate)
         list.add(element)
         adapter = EventListAdapter(list)
         rv.adapter = adapter
+        /*
+        todo sprawdz czy może zadziała przed wywołaniem funkcji displayInList przy uruchomieniu i wszędzie przed nią
+        tempList = list
+        tempRv = rv
+        Mytask(list, rv, progressBar).execute()
+        Temp(ma, context = MainActivity()).xd(tempList,tempRv)
+        tescior(list, rv)*/
+
+
+        /*while(x <= 0){
+            Toast.makeText(this,"yyy", Toast.LENGTH_SHORT).show()
+            //Mytask(list, rv, progressBar).execute()
+        }
+
+        if(x == 1){
+            Toast.makeText(this,"yeah", Toast.LENGTH_SHORT).show()
+        }*/
+
     }
     //*******************************************************************************************
 
@@ -319,7 +406,48 @@ class MainActivity : AppCompatActivity() {
     //*******************************************************************************************
 
 
+    // ProgressBar nie działa 6/7
+    //*******************************************************************************************
+    /*class Temp(val ma: MainActivity, val context: Context) {
 
+        fun xd(list: ArrayList<Element>, rv: RecyclerView){
+            Toast.makeText(context, "pooop", Toast.LENGTH_SHORT).show()
+            //ma.tescior(list, rv)
+        }
+        /*todo konstruktor
+        var list = list
+        var rv = rv
+        var adapter = adapter
+        fun test(){
+            adapter = EventListAdapter(list)
+            rv.adapter = adapter
+        }*/
+    }
+
+
+    fun dispInList(list: ArrayList<Element>, rv: RecyclerView) : String{
+        //x = 1
+        //getFromFS(list,rv)
+
+        Toast.makeText(this,"asd",Toast.LENGTH_SHORT).show()
+
+        return "ProgressBar"
+    }
+    /*fun dispInList(list: ArrayList<Element>, rv: RecyclerView) : String{
+        adapter = EventListAdapter(list)
+        rv.adapter = adapter
+
+        return "ProgressBar"
+    }*/
+
+    fun tescior(list: ArrayList<Element>, rv: RecyclerView){
+        element = Element(data, myStanFromFS, myChallengeFromFS, myTimeFromFS, myUpdate)
+        list.add(element)
+
+        adapter = EventListAdapter(list)
+        rv.adapter = adapter
+    }*/
+    //*******************************************************************************************
 
 
     class RecyclerTouchListener : RecyclerView.OnItemTouchListener{
@@ -362,31 +490,6 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-    /*override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        getMenuInflater().inflate(R.menu.menu_main, menu)
-        return false
-    }*/
-
-    /*override fun onCreateContextMenu(menu: ContextMenu?, v: View?, menuInfo: ContextMenu.ContextMenuInfo?){
-        menu?.setHeaderTitle("Select Action")
-        menu?.add(0,0,0,"Edit")
-        menu?.add(0,1,0,"Delete")
-    }*/
-
-    /*override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        val id : Int = item.itemId
-
-        if(id == R.id.edit){
-            return true
-        }
-        else if(id == R.id.delete){
-            return true
-        }
-
-        return super.onOptionsItemSelected(item)
-    }*/
-
-
     //funkcje do edytowania
     fun changeStan(position: Int, list: ArrayList<Element>){
 
@@ -406,16 +509,23 @@ class MainActivity : AppCompatActivity() {
         add.setImageResource(android.R.drawable.ic_menu_save) // ustawienie wyglądu do edytacji
         txt.setText(list.get(position).challengeFromFS) //wprowadza poprzedni tekst
 
+        sfDocRef = fs.collection(list.get(position).dataFromFS).document(list.get(position).timeFromFS)
+
         add.setOnClickListener {
             newTxt = txt.getText().toString()
-            sfDocRef = fs.collection(list.get(position).dataFromFS).document(list.get(position).timeFromFS)
+            getActualTime()
+
             sfDocRef.update("challenge", newTxt)
+            sfDocRef.update("Update", time)
                     .addOnSuccessListener(OnSuccessListener {
                         Toast.makeText(this,"done",Toast.LENGTH_SHORT).show()
                     })
-            fresh(list,rv) //Odświeżanie listy
+
+            fresh(list,rv) //Odświeżanie listy list.get(position).dataFromFS
             closeKeyboard() //ukrycie klawiatury qwerty
             txt.getText().clear() //czyszczenie pola editText po update
+
+            add.setImageResource(android.R.drawable.ic_input_add) // powrót wyglądu przycisku
         }
     }
     //*******************************************************************************************
@@ -438,27 +548,112 @@ class MainActivity : AppCompatActivity() {
         }) //wyrażenie lambda
         buldier.setNegativeButton("No", { dialogInterface: DialogInterface, i: Int -> }) //wyrażenie lambda
         buldier.show()
-
-        //Toast.makeText(this@MainActivity, list.get(position).challengeFromFS, Toast.LENGTH_SHORT).show()
     }
     //*******************************************************************************************
 
 
+
+    val c = Calendar.getInstance()
+    lateinit var newDate : String
+    lateinit var oldDate : String
+    lateinit var oldChallenge : String
+    lateinit var oldDocument : String
+
+    //Zmiana daty wydarzenia:
+    private fun changeDate(position: Int, list: ArrayList<Element>, rv: RecyclerView) {
+        oldDocument = list.get(position).timeFromFS //zmienna do deleteCopyData()
+        oldChallenge = list.get(position).challengeFromFS //zmienna do copyData()
+        val oldStan = list.get(position).stanFromFS //zmienna do copyData()
+        oldDate = list.get(position).dataFromFS //zmienna do deleteCopyData()
+
+        chooseNewDay(list, rv, oldStan)
+    }
+    //*******************************************************************************************
+    //Funkcja wyboru nowego dnia (otwarcie fragmentu kalendarza)
+    private fun chooseNewDay(list: ArrayList<Element>, rv: RecyclerView, oldStan:Boolean?) {
+        val dpd = object : DatePickerDialog.OnDateSetListener {
+            override fun onDateSet(view: DatePicker?, year: Int, month: Int, dayOfMonth: Int) {
+                c.set(Calendar.YEAR, year)
+                c.set(Calendar.MONTH, month)
+                c.set(Calendar.DAY_OF_MONTH, dayOfMonth)
+
+                newDate = ""+year+"."+(month+1)+"."+dayOfMonth
+                Toast.makeText(this@MainActivity, newDate,Toast.LENGTH_SHORT).show()
+
+                getActualTime()
+                copyData(time, newDate, oldStan)
+                deleteCopyData(oldDate, oldDocument)
+                fresh(list,rv) //Odświeżanie listy list.get(position).dataFromFS
+            }
+        }
+        DatePickerDialog(this, dpd, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH)).show()
+    }
+    //*******************************************************************************************
+
+    //Funkcja kopiująca dokument
+    private fun copyData(time:String, newData:String, oldStan: Boolean?) {
+        val newAdd = HashMap<String, Any>()
+        newAdd.put("challenge", oldChallenge)
+        newAdd.put("Stan", oldStan!!)
+        newAdd.put("Data", newData)
+        newAdd.put("Update",time)
+        fs.collection(newData).document(time)
+                .set(newAdd)
+
+        /*
+        fs.collection(newData).document(time).set(newAdd).addOnSuccessListener {
+            val intent = Intent()
+            setResult(Activity.RESULT_OK, intent)
+        }
+         */
+    }
+    //*******************************************************************************************
+
+    //funkcja do usuwania kopi
+    private fun deleteCopyData(oldDate : String, oldDocument: String) {
+        fs.collection(oldDate).document(oldDocument)
+                .delete()
+    }
+    //*******************************************************************************************
+
     //Odświeżanie listy
     fun fresh(list: ArrayList<Element>, rv: RecyclerView){
-        Handler().postDelayed({ //opóźnienie
+
+        // ProgressBar nie działa 7/7
+        /*
+        var progress = 0
+                while(progress == 100){
+                    Toast.makeText(this,"im in", Toast.LENGTH_SHORT).show()
+                    //if(progress < 100){
+                        progress += 20
+                        progressBar.progress = progress
+                    //}
+                }
+                if(progress == 100){
+                    Toast.makeText(this@MainActivity,"I fresh Your List",Toast.LENGTH_SHORT).show()
+                    progress += 20
+                    //Wyświetlanie dodanych elementów w RecyclerView (lista) 1/4
+                    getFromFS(list,rv)
+                    //*******************************************************************************************/
+                }
+                else if(progress > 100){
+                    Toast.makeText(this,"more than 100", Toast.LENGTH_SHORT).show()
+                    progress = 0
+                    progressBar.progress = progress
+                }
+         */
+
+       Handler().postDelayed({ //opóźnienie
             Toast.makeText(this@MainActivity,"I fresh Your List",Toast.LENGTH_SHORT).show()
             //Wyświetlanie dodanych elementów w RecyclerView (lista) 1/4
             getFromFS(list,rv)
-            //*******************************************************************************************
-        }, 500)
+            //******************************************************************************************
+        }, 100)
     }
     //*******************************************************************************************
 
 
     fun closeKeyboard(){
-        //txt.onEditorAction(EditorInfo.IME_ACTION_DONE)
-
         val inputManager:InputMethodManager =getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         inputManager.hideSoftInputFromWindow(currentFocus.windowToken, InputMethodManager.SHOW_FORCED)
 
@@ -476,8 +671,6 @@ class MainActivity : AppCompatActivity() {
         }) //wyrażenie lambda
         buldier.setNegativeButton("No", { dialogInterface: DialogInterface, i: Int -> }) //wyrażenie lambda
         buldier.show()
-
-        //Toast.makeText(this@MainActivity, list.get(position).challengeFromFS, Toast.LENGTH_SHORT).show()
     }
     //********************************************************************************************
 
