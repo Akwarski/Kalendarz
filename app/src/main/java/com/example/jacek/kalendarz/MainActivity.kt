@@ -21,6 +21,7 @@ import android.content.Context
 import android.content.DialogInterface
 import android.content.Intent
 import android.net.ConnectivityManager
+import android.net.NetworkInfo
 import android.os.AsyncTask
 import android.os.Handler
 import android.os.SystemClock.sleep
@@ -106,15 +107,10 @@ class MainActivity : AppCompatActivity() {
         val add = findViewById<FloatingActionButton>(R.id.add_box) //przycisk do dodania wydarzenia
         add.setImageResource(android.R.drawable.ic_input_add) //ustawienie wyglądu float action button
         val rv = RecyclerView(this) // lista w której będą się wyświetlać wydarzenia z danego dnia
-        val actions = listOf("Edit", "Change date", "Delete") //deklaracja wyskakującego menu
+        val actions = listOf("Edit", "Change date", "Copy to...", "Delete") //deklaracja wyskakującego menu
         rv.layoutManager = LinearLayoutManager(this, LinearLayout.VERTICAL, false)
 
         val list = ArrayList<Element>()
-
-        //Sprawdzenie czy jest podłączenie do internetu
-        val cm = baseContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val networkInfo = cm.activeNetworkInfo
-        //*******************************************************************************************
 
         calView = CalendarView(this) //wyświetlany kalendarz
         cal.addView(calView) // dodanie kalendarza do linearLayoutu aby było go widać
@@ -126,6 +122,45 @@ class MainActivity : AppCompatActivity() {
         //wywołanie funkcji z Kroku2.5/3 firestore
         chooseDay(list,rv)
         // *******************************************************************************************
+
+        //funkcja dodająca i przypisująca przyciskowi funkcję dodaj->powstała po to aby po edytacji znów przypisać przyciskowi funkcję dodaj, aby nie została w nim funkcja edytowania
+        fun addSomethingNew(){
+            add.setOnClickListener {
+                val checkTXT = txt.text.toString().trim { it <= ' ' }
+                if (TextUtils.isEmpty(checkTXT)) {
+                    Toast.makeText(this@MainActivity, "Add Something please", Toast.LENGTH_SHORT).show()
+                } else {
+
+                    //Wywołanie funkcja do pobrania aktualnej godziny
+                    getActualTime()
+                    //*******************************************************************************************
+
+                    //Sprawdzenie czy jest podłączenie do internetu
+                    val cm = baseContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+                    val networkInfo = cm.activeNetworkInfo
+                    //*******************************************************************************************
+
+                    //wywołanie funkcji z Kroku3/3 firestore dodawania do firestore i sprawdzenie połączenia
+                    if(networkInfo == null) // Gdy brak połączenia
+                        Toast.makeText(this@MainActivity, "You dont have internet connection but dont be scarry, Your event dont be lose! We add your calendar event when We have internet connection and in the same time We add this to Your list", Toast.LENGTH_LONG).show()
+
+                    addToFirestore(checkTXT, time)
+                    txt.getText().clear() //czyszczenie pola editText po dodaniu
+                    closeKeyboard() //ukrycie klawiatury qwerty
+                    //*******************************************************************************************
+
+
+                    //ProgressBar nie działa 3/7
+                    //Mytask(list, rv, progressBar).execute()
+
+                    //Wyświetlanie dodanych elementów w RecyclerView (lista) 3/4 (lista)
+                    getFromFS(list,rv)
+                    //*******************************************************************************************
+
+                }
+            }
+        }
+        //*******************************************************************************************
 
         rv.addOnItemTouchListener(RecyclerTouchListener(this,
                 rv, object : ClickListener {
@@ -145,14 +180,22 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
+
+            //val f = (addSomethingNew())
+
+            // Menu kontekstowe
             override fun onItemLongClick(view: View, position: Int) {
                 selector(null, actions, { dialogInterface, i ->
                     if(i==0) {
-                        updateData(position, list, add, rv)
+                        updateData(position, list, add, rv, ::addSomethingNew)
                     }
 
                     else if(i==1){
                         changeDate(position, list, rv)
+                    }
+
+                    else if(i==2){
+                        copyDate(position, list, rv)
                     }
 
                     else {
@@ -209,36 +252,9 @@ class MainActivity : AppCompatActivity() {
 
         lay.addView(rv)
 
-        add.setOnClickListener {
-            val checkTXT = txt.text.toString().trim { it <= ' ' }
-            if (TextUtils.isEmpty(checkTXT)) {
-                Toast.makeText(this@MainActivity, "Add Something please", Toast.LENGTH_SHORT).show()
-            } else {
-
-                //Wywołanie funkcja do pobrania aktualnej godziny
-                getActualTime()
-                //*******************************************************************************************
-
-                //wywołanie funkcji z Kroku3/3 firestore dodawania do firestore i sprawdzenie połączenia
-                if(networkInfo == null) // Gdy brak połączenia
-                    Toast.makeText(this@MainActivity, "You dont have internet connection but dont be scarry, Your event dont be lose! We add your calendar event when We have internet connection and in the same time We add this to Your list", Toast.LENGTH_LONG).show()
-
-                addToFirestore(checkTXT, time)
-                txt.getText().clear() //czyszczenie pola editText po dodaniu
-                closeKeyboard() //ukrycie klawiatury qwerty
-                //*******************************************************************************************
-
-
-                //ProgressBar nie działa 3/7
-                //Mytask(list, rv, progressBar).execute()
-
-                //Wyświetlanie dodanych elementów w RecyclerView (lista) 3/4 (lista)
-                getFromFS(list,rv)
-                //*******************************************************************************************
-
-            }
-        }
+        addSomethingNew()
     }
+
 
     //Krok3/3 anonimowe logowanie
     //Funkcja:
@@ -504,7 +520,7 @@ class MainActivity : AppCompatActivity() {
 
 
     //Edytowanie:
-    private fun updateData(position: Int, list: ArrayList<Element>, add: FloatingActionButton, rv: RecyclerView) {
+    private fun updateData(position: Int, list: ArrayList<Element>, add: FloatingActionButton, rv: RecyclerView, addSomethingNew:()->Unit ) {
 
         add.setImageResource(android.R.drawable.ic_menu_save) // ustawienie wyglądu do edytacji
         txt.setText(list.get(position).challengeFromFS) //wprowadza poprzedni tekst
@@ -526,6 +542,8 @@ class MainActivity : AppCompatActivity() {
             txt.getText().clear() //czyszczenie pola editText po update
 
             add.setImageResource(android.R.drawable.ic_input_add) // powrót wyglądu przycisku
+            addSomethingNew()
+
         }
     }
     //*******************************************************************************************
@@ -569,6 +587,18 @@ class MainActivity : AppCompatActivity() {
         chooseNewDay(list, rv, oldStan)
     }
     //*******************************************************************************************
+
+
+    //Kopiowanie wydarzenia na inny dzień:
+    private fun copyDate(position: Int, list: ArrayList<Element>, rv: RecyclerView) {
+        oldChallenge = list.get(position).challengeFromFS //zmienna z changeDate() stąd nazwa
+        val eventStan = list.get(position).stanFromFS
+
+        copyTo(list, rv, eventStan)
+    }
+    //*******************************************************************************************
+
+
     //Funkcja wyboru nowego dnia (otwarcie fragmentu kalendarza)
     private fun chooseNewDay(list: ArrayList<Element>, rv: RecyclerView, oldStan:Boolean?) {
         val dpd = object : DatePickerDialog.OnDateSetListener {
@@ -589,6 +619,28 @@ class MainActivity : AppCompatActivity() {
         DatePickerDialog(this, dpd, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH)).show()
     }
     //*******************************************************************************************
+
+
+    //Funkcja wyboru nowego dnia (otwarcie fragmentu kalendarza)
+    private fun copyTo (list: ArrayList<Element>, rv: RecyclerView, eventStan:Boolean?) {
+        val dpd = object : DatePickerDialog.OnDateSetListener {
+            override fun onDateSet(view: DatePicker?, year: Int, month: Int, dayOfMonth: Int) {
+                c.set(Calendar.YEAR, year)
+                c.set(Calendar.MONTH, month)
+                c.set(Calendar.DAY_OF_MONTH, dayOfMonth)
+
+                newDate = ""+year+"."+(month+1)+"."+dayOfMonth
+                Toast.makeText(this@MainActivity, newDate,Toast.LENGTH_SHORT).show()
+
+                getActualTime()
+                copyData(time, newDate, eventStan)
+                fresh(list,rv) //Odświeżanie listy list.get(position).dataFromFS
+            }
+        }
+        DatePickerDialog(this, dpd, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH)).show()
+    }
+    //*******************************************************************************************
+
 
     //Funkcja kopiująca dokument
     private fun copyData(time:String, newData:String, oldStan: Boolean?) {
