@@ -1,9 +1,7 @@
 package com.example.jacek.kalendarz
 
-import android.app.Activity
-import android.app.AlertDialog
-import android.app.DatePickerDialog
-import android.content.ContentValues
+import android.app.*
+import android.content.*
 import android.support.design.widget.FloatingActionButton
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
@@ -17,14 +15,17 @@ import com.google.android.gms.tasks.Task
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.android.synthetic.main.activity_main.*
 
-import android.content.Context
-import android.content.DialogInterface
-import android.content.Intent
+import android.graphics.BitmapFactory
+import android.graphics.Color
+import android.media.MediaPlayer
 import android.net.ConnectivityManager
 import android.net.NetworkInfo
 import android.os.AsyncTask
+import android.os.Build
 import android.os.Handler
 import android.os.SystemClock.sleep
+import android.provider.Settings
+import android.support.annotation.NonNull
 import android.widget.CalendarView
 import java.util.Calendar
 import android.support.v7.widget.LinearLayoutManager
@@ -74,6 +75,15 @@ class MainActivity : AppCompatActivity() {
     lateinit var txt: EditText
     lateinit var sfDocRef : DocumentReference
     lateinit var newTxt : String
+    lateinit var tempActuallDate : String
+
+    //Notification
+    lateinit var notificationManager: NotificationManager
+    lateinit var notificationChannel: NotificationChannel
+    lateinit var builder: Notification.Builder
+    private val channelID = "com.example.jacek.kalendarz"
+    private val description = "Test notification"
+    var idNotification = 0
 
     //Krok1 Tworzenie listy
     //lateinit var eventRecyclerView : RecyclerView
@@ -82,6 +92,10 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        //autostart aplikacji
+        //autostart() todo nie działa
+        // todo nie działą usuwanie z notificatoin przez swipe
 
         // Powoduję że po odpaleniu aplikacji kursor nie wędruję do editText
         this.window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN)
@@ -112,6 +126,7 @@ class MainActivity : AppCompatActivity() {
 
         val list = ArrayList<Element>()
 
+        //calView = CalendarView(this) //wyświetlany kalendarz
         calView = CalendarView(this) //wyświetlany kalendarz
         cal.addView(calView) // dodanie kalendarza do linearLayoutu aby było go widać
 
@@ -187,7 +202,7 @@ class MainActivity : AppCompatActivity() {
             override fun onItemLongClick(view: View, position: Int) {
                 selector(null, actions, { dialogInterface, i ->
                     if(i==0) {
-                        updateData(position, list, add, rv, ::addSomethingNew)
+                        updateData(position, list, add, rv, ::addSomethingNew) //wysłanie funkcji jako parametr
                     }
 
                     else if(i==1){
@@ -281,6 +296,7 @@ class MainActivity : AppCompatActivity() {
 
         dataForm = SimpleDateFormat("yyyy.M.d", Locale.getDefault())
         data = dataForm.format(dateTemp)
+        tempActuallDate = data
     }
     //*******************************************************************************************
 
@@ -300,7 +316,6 @@ class MainActivity : AppCompatActivity() {
             data = dayOfMonth.toString() + "." + (month+1) + "." + year
             currentData.setText(data)
             data = year.toString() + "." + (month+1) + "." + dayOfMonth
-
 
             // ProgressBar nie działa 4/7
             //Mytask(list, rv, progressBar).execute()
@@ -337,6 +352,16 @@ class MainActivity : AppCompatActivity() {
         clear(list)
         //*******************************************************************************************
 
+        if(data == tempActuallDate) { //if dodałem coś do dnia dzisiejszego odśwież notification
+            //czyszczenie notification
+            notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            for(i in 0..idNotification) {
+                notificationManager.cancel(i)
+            }
+            idNotification = 0 //wprowadzanie ponownie oznaczenia idNotification po wyczyszczeniu
+        }
+        //*******************************************************************************************
+
         fs.collection(data).get().addOnCompleteListener(object : OnCompleteListener<QuerySnapshot> {
             override fun onComplete(task: Task<QuerySnapshot>) {
                 if (task.isSuccessful) {
@@ -345,7 +370,6 @@ class MainActivity : AppCompatActivity() {
                         //wywołanie funkcji wyświetlającej puste recyclerView
                         emptyRV(list, rv)
                         //*******************************************************************************************
-
                     }
 
                     //przypisanie do wysłania do obiektu element
@@ -355,11 +379,20 @@ class MainActivity : AppCompatActivity() {
                         myUpdate = document.getString("Update").toString()
                         myTimeFromFS = document.id //pobieram id dokumentu (w moim przypadku data i godzina)
 
+                        if(data == tempActuallDate) { //if dodałem coś do dnia dzisiejszego odśwież notification
 
-                        //wywołanie funkcji do wyświetlania w recyclerView
-                        displayInList(list, rv)
-                        //*******************************************************************************************
+                            //wywołanie funkcji do wyświetlania w recyclerView
+                            displayInListWithNotification(list, rv)
+                            //idNotification = 0
+                            //Notification
+                            //notification() todo
+                            //*******************************************************************************************
+                        }else {
 
+                            //wywołanie funkcji do wyświetlania w recyclerView
+                            displayInList(list, rv)
+                            //*******************************************************************************************
+                        }
                     }
 
                 }
@@ -374,7 +407,6 @@ class MainActivity : AppCompatActivity() {
     }
     //*******************************************************************************************
 
-
     // ProgressBar nie działa 5/7
     /*var x = 0
     lateinit var tempList : ArrayList<Element>
@@ -386,6 +418,7 @@ class MainActivity : AppCompatActivity() {
         list.add(element)
         adapter = EventListAdapter(list)
         rv.adapter = adapter
+
         /*
         todo sprawdz czy może zadziała przed wywołaniem funkcji displayInList przy uruchomieniu i wszędzie przed nią
         tempList = list
@@ -407,6 +440,59 @@ class MainActivity : AppCompatActivity() {
     }
     //*******************************************************************************************
 
+    //funkcja wyświetlania w recyclerView i dodająca notification z aktualnego dnia
+    fun displayInListWithNotification(list: ArrayList<Element>, rv: RecyclerView) {
+        element = Element(data, myStanFromFS, myChallengeFromFS, myTimeFromFS, myUpdate)
+        list.add(element)
+        adapter = EventListAdapter(list)
+        rv.adapter = adapter
+
+        //Notification
+        notification(element.challengeFromFS)
+
+    }
+    //*******************************************************************************************
+
+    // Funkcja Notification
+    private fun notification(challenge: String){
+        //notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val intent = Intent(this, MainActivity::class.java)
+        val pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT)
+
+        val contentView = RemoteViews(packageName, R.layout.notification_layout)
+        contentView.setTextViewText(R.id.notificationEvent, challenge)
+
+
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            notificationChannel = NotificationChannel(channelID,description,NotificationManager.IMPORTANCE_HIGH)
+            notificationChannel.enableLights(true)
+            notificationChannel.lightColor = Color.GREEN
+            notificationChannel.enableVibration(false)
+            notificationManager.createNotificationChannel(notificationChannel)
+
+            builder = Notification.Builder(this, channelID)
+                    .setContent(contentView)
+                    .setSmallIcon(R.mipmap.ic_launcher_round)
+                    .setLargeIcon(BitmapFactory.decodeResource(this.resources, R.mipmap.ic_launcher))
+                    .setContentIntent(pendingIntent)
+                    .setOngoing(true)
+                    .setPriority(Notification.PRIORITY_MAX);
+
+        }else{
+
+            builder = Notification.Builder(this)
+                    .setContent(contentView)
+                    .setSmallIcon(R.mipmap.ic_launcher_round)
+                    .setLargeIcon(BitmapFactory.decodeResource(this.resources, R.mipmap.ic_launcher))
+                    .setContentIntent(pendingIntent)
+                    .setOngoing(true)
+                    .setPriority(Notification.PRIORITY_MAX);
+        }
+
+        notificationManager.notify(idNotification, builder.build())
+        idNotification++
+    }
     //funkcji wyświetlająca puste recyclerView
     private fun emptyRV(list: ArrayList<Element>, rv: RecyclerView) {
         list.clear()
@@ -520,7 +606,7 @@ class MainActivity : AppCompatActivity() {
 
 
     //Edytowanie:
-    private fun updateData(position: Int, list: ArrayList<Element>, add: FloatingActionButton, rv: RecyclerView, addSomethingNew:()->Unit ) {
+    private fun updateData(position: Int, list: ArrayList<Element>, add: FloatingActionButton, rv: RecyclerView, addSomethingNew:()->Unit ) { //wysłanie funkcji jako parametr
 
         add.setImageResource(android.R.drawable.ic_menu_save) // ustawienie wyglądu do edytacji
         txt.setText(list.get(position).challengeFromFS) //wprowadza poprzedni tekst
@@ -726,6 +812,21 @@ class MainActivity : AppCompatActivity() {
     }
     //********************************************************************************************
 
+    fun autostart(){
+        val am = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+
+
+        val futureDate = (Date().getTime() + 86400000) as Date
+        futureDate.setHours(20)
+        futureDate.setMinutes(3)
+        futureDate.setSeconds(0)
+
+        intent = Intent(this, Autorun::class.java)
+
+        val sender = PendingIntent.getBroadcast(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT)
+
+        am.set(AlarmManager.RTC_WAKEUP, 72540000, sender)
+    }
 }
 
 

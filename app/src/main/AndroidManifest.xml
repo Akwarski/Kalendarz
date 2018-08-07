@@ -34,6 +34,11 @@
                 <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
             </intent-filter>
         </activity>
+
+        <receiver android:name=".Autorun"
+            android:enabled="true"
+            android:exported="true" />
+
     </application>
 
 </manifest>
